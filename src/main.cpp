@@ -55,15 +55,108 @@ float clamp(float value, float low, float high) {
 
 void maskLightCheckerboard(sf::Image& image) {
     const sf::Vector2u imageSize = image.getSize();
-    for (unsigned y = 0; y < imageSize.y; ++y) {
-        for (unsigned x = 0; x < imageSize.x; ++x) {
-            sf::Color pixel = image.getPixel(x, y);
+    const unsigned width = imageSize.x;
+    const unsigned height = imageSize.y;
+    std::vector<bool> background(width * height, false);
+    std::vector<unsigned> stack;
+    stack.reserve(width * height / 4);
+
+    auto index = [width](unsigned x, unsigned y) {
+        return y * width + x;
+    };
+
+    auto isCheckerPixel = [](sf::Color pixel) {
+        const int brightest = std::max({pixel.r, pixel.g, pixel.b});
+        const int darkest = std::min({pixel.r, pixel.g, pixel.b});
+        return darkest > 170 && brightest - darkest < 42;
+    };
+
+    auto addSeed = [&](unsigned x, unsigned y) {
+        const unsigned i = index(x, y);
+        if (!background[i] && isCheckerPixel(image.getPixel(x, y))) {
+            background[i] = true;
+            stack.push_back(i);
+        }
+    };
+
+    for (unsigned x = 0; x < width; ++x) {
+        addSeed(x, 0);
+        addSeed(x, height - 1);
+    }
+    for (unsigned y = 0; y < height; ++y) {
+        addSeed(0, y);
+        addSeed(width - 1, y);
+    }
+
+    while (!stack.empty()) {
+        const unsigned current = stack.back();
+        stack.pop_back();
+
+        const unsigned x = current % width;
+        const unsigned y = current / width;
+        const std::array<sf::Vector2i, 4> neighbors = {
+            sf::Vector2i{-1, 0},
+            sf::Vector2i{1, 0},
+            sf::Vector2i{0, -1},
+            sf::Vector2i{0, 1}
+        };
+
+        for (const auto& offset : neighbors) {
+            const int nx = static_cast<int>(x) + offset.x;
+            const int ny = static_cast<int>(y) + offset.y;
+            if (nx < 0 || ny < 0 || nx >= static_cast<int>(width) || ny >= static_cast<int>(height)) {
+                continue;
+            }
+
+            const unsigned neighborIndex = index(static_cast<unsigned>(nx), static_cast<unsigned>(ny));
+            if (!background[neighborIndex] && isCheckerPixel(image.getPixel(static_cast<unsigned>(nx), static_cast<unsigned>(ny)))) {
+                background[neighborIndex] = true;
+                stack.push_back(neighborIndex);
+            }
+        }
+    }
+
+    std::vector<sf::Uint8> alpha(width * height, 255);
+    for (unsigned y = 0; y < height; ++y) {
+        for (unsigned x = 0; x < width; ++x) {
+            const unsigned i = index(x, y);
+            if (background[i]) {
+                alpha[i] = 0;
+                continue;
+            }
+
+            bool touchesBackground = false;
+            for (int oy = -2; oy <= 2 && !touchesBackground; ++oy) {
+                for (int ox = -2; ox <= 2 && !touchesBackground; ++ox) {
+                    const int nx = static_cast<int>(x) + ox;
+                    const int ny = static_cast<int>(y) + oy;
+                    if (nx < 0 || ny < 0 || nx >= static_cast<int>(width) || ny >= static_cast<int>(height)) {
+                        continue;
+                    }
+                    touchesBackground = background[index(static_cast<unsigned>(nx), static_cast<unsigned>(ny))];
+                }
+            }
+
+            if (!touchesBackground) {
+                continue;
+            }
+
+            const sf::Color pixel = image.getPixel(x, y);
             const int brightest = std::max({pixel.r, pixel.g, pixel.b});
             const int darkest = std::min({pixel.r, pixel.g, pixel.b});
-            if (darkest > 220 && brightest - darkest < 12) {
-                pixel.a = 0;
-                image.setPixel(x, y, pixel);
-            }
+            const int spread = brightest - darkest;
+            const float brightnessBlend = clamp((static_cast<float>(brightest) - 145.0f) / 105.0f, 0.0f, 1.0f);
+            const float neutralBlend = clamp((65.0f - static_cast<float>(spread)) / 65.0f, 0.0f, 1.0f);
+            const float backgroundBlend = brightnessBlend * neutralBlend;
+            alpha[i] = static_cast<sf::Uint8>(255.0f * (1.0f - backgroundBlend * 0.86f));
+        }
+    }
+
+    for (unsigned y = 0; y < height; ++y) {
+        for (unsigned x = 0; x < width; ++x) {
+            sf::Color pixel = image.getPixel(x, y);
+            pixel.a = alpha[index(x, y)];
+            image.setPixel(x, y, pixel);
         }
     }
 }
