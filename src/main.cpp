@@ -1,3 +1,4 @@
+#include <SFML/Audio.hpp>
 #include <SFML/Graphics.hpp>
 
 #include <algorithm>
@@ -256,6 +257,7 @@ public:
         loadPlayerSprite();
         loadPickupIcons();
         loadEnemySprite();
+        startBackgroundMusic();
         reset();
     }
 
@@ -712,6 +714,22 @@ private:
         }
     }
 
+    void startBackgroundMusic() {
+        const std::vector<std::string> paths = {
+            "assets/music/SurvivalArena.mp3",
+            "../assets/music/SurvivalArena.mp3"
+        };
+
+        for (const auto& path : paths) {
+            if (backgroundMusic_.openFromFile(path)) {
+                backgroundMusic_.setLoop(true);
+                backgroundMusic_.setVolume(45.0f);
+                backgroundMusic_.play();
+                return;
+            }
+        }
+    }
+
     int pickupIconIndex(const Pickup& pickup) const {
         switch (pickup.type) {
             case PickupType::Ammo:
@@ -958,6 +976,7 @@ private:
     sf::Vector2i enemyFrameSize_{0, 0};
     std::array<sf::IntRect, EnemySpriteFrameCount> enemyFrameRects_;
     int enemyFrameReferenceHeight_ = 1;
+    sf::Music backgroundMusic_;
     std::mt19937 rng_;
     Player player_;
     std::vector<Bullet> bullets_;
