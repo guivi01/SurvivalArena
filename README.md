@@ -2,6 +2,8 @@
 
 A top-down arena shooter made with C++ and SFML. Survive as long as possible while enemy waves grow, collect ammo, health, and weapon pickups, and score points by staying alive and defeating enemies.
 
+![Survival Arena gameplay screenshot](assets/screen_grabs/screen_1.png)
+
 ## What You Need
 
 This game is built from source code. That means your computer needs a few development tools before it can create the game program.
