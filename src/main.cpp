@@ -252,7 +252,7 @@ public:
         : window_(sf::VideoMode(WindowWidth, WindowHeight), "Survival Arena"),
           rng_(std::random_device{}()) {
         window_.setFramerateLimit(120);
-        font_.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
+        font_.loadFromFile("assets/fonts/DejaVuSans.ttf");
         loadBackground();
         loadPlayerSprite();
         loadPickupIcons();
@@ -606,7 +606,7 @@ private:
 
     void loadPlayerSprite() {
         const std::array<std::string, PlayerWeaponSpriteCount> filenames = {
-            "Payer.png",
+            "Player_pistol.png",
             "Player_shotgun.png",
             "Player_machinegun.png"
         };
