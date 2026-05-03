@@ -21,6 +21,7 @@ constexpr float PickupRadius = 12.0f;
 constexpr float ArenaPadding = 64.0f;
 constexpr int PlayerSpriteColumns = 4;
 constexpr int PlayerSpriteRows = 2;
+constexpr int PlayerSpriteFrameCount = PlayerSpriteColumns * PlayerSpriteRows;
 constexpr int PlayerWeaponSpriteCount = 3;
 constexpr float PlayerSpriteHeight = 86.0f;
 constexpr int PickupIconCount = 5;
@@ -632,6 +633,21 @@ private:
                 };
 
                 maskLightCheckerboard(playerImage);
+                playerFrameReferenceHeights_[weaponIndex] = 1;
+                for (int frame = 0; frame < PlayerSpriteFrameCount; ++frame) {
+                    const int frameX = frame % PlayerSpriteColumns;
+                    const int frameY = frame / PlayerSpriteColumns;
+                    const sf::IntRect cell{
+                        frameX * playerFrameSize_.x,
+                        frameY * playerFrameSize_.y,
+                        playerFrameSize_.x,
+                        playerFrameSize_.y
+                    };
+                    playerFrameRects_[weaponIndex][frame] = visibleBounds(playerImage, cell);
+                    playerFrameReferenceHeights_[weaponIndex] = std::max(
+                        playerFrameReferenceHeights_[weaponIndex],
+                        playerFrameRects_[weaponIndex][frame].height);
+                }
 
                 if (playerTextures_[weaponIndex].loadFromImage(playerImage)) {
                     playerTextures_[weaponIndex].setSmooth(true);
@@ -750,7 +766,7 @@ private:
     void updatePlayerAnimation(sf::Vector2f movementDirection, float dt) {
         if (length(movementDirection) > 0.0f) {
             playerAnimationTime_ += dt;
-            playerFrame_ = static_cast<int>(playerAnimationTime_ * 10.0f) % (PlayerSpriteColumns * PlayerSpriteRows);
+            playerFrame_ = static_cast<int>(playerAnimationTime_ * 10.0f) % PlayerSpriteFrameCount;
             return;
         }
 
@@ -787,18 +803,12 @@ private:
         const int spriteIndex = hasCurrentWeaponSprite ? weaponSpriteIndex : 0;
 
         if (hasPlayerSprites_[spriteIndex]) {
-            const int frameX = playerFrame_ % PlayerSpriteColumns;
-            const int frameY = playerFrame_ / PlayerSpriteColumns;
+            const sf::IntRect frameRect = playerFrameRects_[spriteIndex][playerFrame_];
             sf::Sprite sprite(playerTextures_[spriteIndex]);
-            sprite.setTextureRect({
-                frameX * playerFrameSize_.x,
-                frameY * playerFrameSize_.y,
-                playerFrameSize_.x,
-                playerFrameSize_.y
-            });
-            sprite.setOrigin(playerFrameSize_.x * 0.5f, playerFrameSize_.y * 0.5f);
+            sprite.setTextureRect(frameRect);
+            sprite.setOrigin(frameRect.width * 0.5f, frameRect.height * 0.5f);
 
-            const float scale = PlayerSpriteHeight / static_cast<float>(playerFrameSize_.y);
+            const float scale = PlayerSpriteHeight / static_cast<float>(playerFrameReferenceHeights_[spriteIndex]);
             sprite.setScale(scale, scale);
             sprite.setPosition(player_.position);
             sprite.setRotation(angleDegrees(player_.aim) - 90.0f);
@@ -971,6 +981,8 @@ private:
     sf::Sprite backgroundSprite_;
     std::array<sf::Texture, PlayerWeaponSpriteCount> playerTextures_;
     sf::Vector2i playerFrameSize_{0, 0};
+    std::array<std::array<sf::IntRect, PlayerSpriteFrameCount>, PlayerWeaponSpriteCount> playerFrameRects_;
+    std::array<int, PlayerWeaponSpriteCount> playerFrameReferenceHeights_{1, 1, 1};
     std::array<sf::Texture, PickupIconCount> pickupTextures_;
     sf::Texture enemyTexture_;
     sf::Vector2i enemyFrameSize_{0, 0};
